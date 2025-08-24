@@ -1,0 +1,28 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+python-dotenv==1.0.1
+pydantic-settings==2.4.0
+
+# LangChain / LangGraph
+langchain>=0.2,<0.3
+langgraph>=0.2,<0.3
+langchain-openai>=0.1,<0.2
+langchain-pinecone>=0.1,<0.2
+
+# Clientes
+openai==1.45.0
+pinecone==5.0.1
+tiktoken==0.7.0
+httpx==0.27.2
+tenacity==8.5.0
+
+# Ingesta (las usaremos en el paso de crawling)
+beautifulsoup4==4.12.3
+trafilatura==1.7.0
+markdownify==0.12.1
+
+# Calidad
+black==24.8.0
+ruff==0.6.9
+pytest==8.3.2
