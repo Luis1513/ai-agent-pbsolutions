@@ -180,7 +180,3 @@ Desktop.ini
 *.log
 logs/
 
-# Data files (opcional - comentar si quieres trackear estos archivos)
-# data/*.json
-# data/embeddings_processed.json
-# data/processed_chunks.json
