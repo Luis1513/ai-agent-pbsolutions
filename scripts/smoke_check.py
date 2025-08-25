@@ -11,15 +11,19 @@ Dependencies:
     - Required environment variables set in settings
 """
 
+# ====================================================================================================== #
 from app.core.settings import settings
 from openai import OpenAI
 from pinecone import Pinecone, ServerlessSpec
+# ====================================================================================================== #
 
-#*****************************************************************************************************#
+
+
+# ====================================================================================================== #
+# Check OpenAI Embeddings and Get Dimension
+# ====================================================================================================== #
 def check_openai_embeddings_and_get_dimension():
     """
-    Test OpenAI embeddings API and retrieve vector dimension.
-    
     Returns: tuple: (embedding_vector, vector_dimension)
         
     Raises: Exception: If OpenAI API call fails
@@ -40,15 +44,15 @@ def check_openai_embeddings_and_get_dimension():
     print(f"[OK] OpenAI embeddings: model={settings.openai_embedding_model}, dim={vector_dimension}")
     
     return embedding_vector, vector_dimension
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Ensure Pinecone Index Exists
+# ====================================================================================================== #
 def ensure_pinecone_index_exists(vector_dimension: int):
     """
-    Ensure Pinecone index exists with correct configuration.
-    
     Args: vector_dimension (int): Dimension of vectors to be stored
         
     Returns: Pinecone.Index: Configured Pinecone index instance
@@ -79,15 +83,15 @@ def ensure_pinecone_index_exists(vector_dimension: int):
     
     # Return configured index
     return pinecone_client.Index(settings.pinecone_index)
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Test Vector Storage and Retrieval
+# ====================================================================================================== #
 def test_vector_storage_and_retrieval(pinecone_index, test_vector):
     """
-    Test vector storage and retrieval functionality.
-    
     Args:
         pinecone_index: Configured Pinecone index instance
         test_vector: Vector to store and query
@@ -113,15 +117,15 @@ def test_vector_storage_and_retrieval(pinecone_index, test_vector):
     # Extract and display results
     top_match = query_result.matches[0]
     print(f"[OK] Pinecone query: id={top_match.id}, score={top_match.score:.4f}")
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Main function to execute the complete smoke test
+# ====================================================================================================== #
 def main():
     """
-    Main function to execute the complete smoke test.
-    
     Tests:
         1. OpenAI embeddings generation
         2. Pinecone index configuration
@@ -142,10 +146,11 @@ def main():
     except Exception as error:
         print(f"[ERROR] Smoke test failed: {str(error)}")
         raise
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
 if __name__ == "__main__":
     main()
+# ====================================================================================================== #

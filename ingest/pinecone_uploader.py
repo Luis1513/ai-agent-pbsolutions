@@ -9,22 +9,23 @@ The module handles:
     - Batch uploading to Pinecone index
     - Progress tracking and error handling
     - Connection management to Pinecone
-
 """
 
+# ====================================================================================================== #
 import json
 from pathlib import Path
 from typing import List, Dict, Any
 from pinecone import Pinecone
 from app.core.settings import settings
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Load Processed Embeddings from JSON file
+# ====================================================================================================== #
 def load_embeddings(embeddings_file: str = "data/embeddings_processed.json") -> List[Dict[str, Any]]:
     """
-    Load processed embeddings from JSON file.
-    
     Args: embeddings_file: Path to embeddings file
         
     Returns: List of chunks with embeddings ready for Pinecone
@@ -37,17 +38,17 @@ def load_embeddings(embeddings_file: str = "data/embeddings_processed.json") -> 
     except Exception as e:
         print(f"Error loading embeddings: {e}")
         return []
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Upload Embeddings to Pinecone
+# ====================================================================================================== #
 def upload_to_pinecone(embeddings: List[Dict[str, Any]], batch_size: int = 100) -> bool:
     """
-    Upload embeddings to Pinecone in batches.
-    
     Args: embeddings: List of embeddings ready for Pinecone
-           batch_size: Number of vectors to upload per batch
+          batch_size: Number of vectors to upload per batch
         
     Returns: bool: True if successful, False otherwise
     """
@@ -93,15 +94,15 @@ def upload_to_pinecone(embeddings: List[Dict[str, Any]], batch_size: int = 100) 
     except Exception as e:
         print(f"Error connecting to Pinecone: {e}")
         return False
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Main function to upload embeddings to Pinecone
+# ====================================================================================================== #
 def main():
-    """
-    Main function to upload embeddings to Pinecone.
-    """
+
     # Load embeddings from JSON file
     embeddings = load_embeddings()
     if not embeddings:
@@ -117,10 +118,13 @@ def main():
         print("Pinecone upload completed successfully!")
     else:
         print("Pinecone upload failed!")
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Main execution block
+# ====================================================================================================== #
 if __name__ == "__main__":
     main()
+# ====================================================================================================== #

@@ -12,18 +12,20 @@ The module handles:
     - Pipeline status reporting
 """
 
+# ====================================================================================================== #
 from pathlib import Path
 from .document_processor import process_json_documents, save_chunks_to_json
 from .embedding_processor import generate_embeddings_for_chunks, save_embeddings_to_json
 from .pinecone_uploader import upload_to_pinecone
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Run the complete pipeline from start to finish
+# ====================================================================================================== #
 def run_complete_pipeline(data_folder: str = "data", chunk_size: int = 750, chunk_overlap: int = 150):
     """
-    Run the complete pipeline from start to finish.
-    
     Args: data_folder: Folder containing JSON files
            chunk_size: Size of each chunk (default: 800 - optimized for context preservation)
            chunk_overlap: Overlap between chunks (default: 150 - optimal continuity)
@@ -81,15 +83,15 @@ def run_complete_pipeline(data_folder: str = "data", chunk_size: int = 750, chun
     print("=" * 50)
     
     return True
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Main function to run the pipeline
+# ====================================================================================================== #
 def main():
-    """
-    Main function to run the pipeline.
-    """
+
     # Execute the complete pipeline with default settings
     success = run_complete_pipeline(data_folder="data")
     
@@ -97,9 +99,11 @@ def main():
         print("   • Your knowledge base is now ready in Pinecone")
     else:
         print("\n❌ Pipeline failed. Check the logs above for details.")
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
-#*****************************************************************************************************#
+
+# ====================================================================================================== #
 if __name__ == "__main__":
     main()
+# ====================================================================================================== #

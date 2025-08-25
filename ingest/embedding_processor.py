@@ -18,12 +18,11 @@ from openai import OpenAI
 from app.core.settings import settings
 
 
-
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Load Processed Chunks from JSON file
+# ====================================================================================================== #
 def load_processed_chunks(chunks_file: str = "data/processed_chunks.json") -> List[Dict[str, Any]]:
     """
-    Load processed chunks from JSON file.
-    
     Args: chunks_file: Path to processed chunks file
         
     Returns: List of chunks with text and metadata
@@ -36,15 +35,15 @@ def load_processed_chunks(chunks_file: str = "data/processed_chunks.json") -> Li
     except Exception as e:
         print(f"Error loading chunks: {e}")
         return []
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Generate Embeddings for Chunks using OpenAI
+# ====================================================================================================== #
 def generate_embeddings_for_chunks(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Generate embeddings for chunks using OpenAI.
-    
+    """    
     Args: chunks: List of chunks with text and metadata
         
     Returns: List of chunks with embeddings and metadata ready for Pinecone
@@ -89,15 +88,15 @@ def generate_embeddings_for_chunks(chunks: List[Dict[str, Any]]) -> List[Dict[st
     
     print(f"Generated embeddings for {len(chunks_with_embeddings)} chunks")
     return chunks_with_embeddings
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Save Embeddings to JSON file
+# ====================================================================================================== #
 def save_embeddings_to_json(chunks_with_embeddings: List[Dict[str, Any]], output_file: str = "data/embeddings_processed.json"):
     """
-    Save chunks with embeddings to JSON file.
-    
     Args:
         chunks_with_embeddings: List of chunks with embeddings
         output_file: Output file name
@@ -113,15 +112,15 @@ def save_embeddings_to_json(chunks_with_embeddings: List[Dict[str, Any]], output
         print(f"Embeddings saved to {output_file}")
     except Exception as e:
         print(f"Error saving embeddings: {e}")
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Main function to process chunks and generate embeddings
+# ====================================================================================================== #
 def main():
-    """
-    Main function to process chunks and generate embeddings.
-    """
+
     # Load processed chunks from JSON file
     chunks = load_processed_chunks()
     if not chunks:
@@ -136,10 +135,13 @@ def main():
         print("Embedding generation completed successfully!")
     else:
         print("No embeddings were generated")
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Main execution block
+# ====================================================================================================== #
 if __name__ == "__main__":
     main()
+# ====================================================================================================== #

@@ -17,20 +17,21 @@ Usage:
     - Standalone execution: python document_processor.py
 """
 
+# ====================================================================================================== #
 import json
 import os
 from pathlib import Path
 from typing import List, Dict, Any
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Process JSON Documents
+# ====================================================================================================== #
 def process_json_documents(data_folder: str = "Data", chunk_size: int = 750, chunk_overlap: int = 150) -> List[Dict[str, Any]]:
     """
-    Process JSON documents from Data folder and create chunks.
-    
     This function reads all JSON files from the specified data folder, extracts text content from each file, and splits the text into chunks using LangChain's
     RecursiveCharacterTextSplitter. Each chunk maintains metadata including sources, section information, and a unique chunk identifier.
     
@@ -41,6 +42,7 @@ def process_json_documents(data_folder: str = "Data", chunk_size: int = 750, chu
         
     Returns: List of dictionaries, where each dictionary represents a chunk
     """
+
     # Initialize text splitter with optimized chunk size and overlap
     # Chunk size 800: Optimal for maintaining complete context while avoiding abrupt cuts
     # Overlap 150: Ensures continuity between chunks without excessive redundancy
@@ -87,15 +89,15 @@ def process_json_documents(data_folder: str = "Data", chunk_size: int = 750, chu
     
     print(f"Total chunks created: {len(chunks)}")
     return chunks
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
 
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Save Chunks to JSON
+# ====================================================================================================== #
 def save_chunks_to_json(chunks: List[Dict[str, Any]], output_file: str = "data/processed_chunks.json"):
     """
-    Save processed chunks to a JSON file.
-    
     This function takes a list of processed chunks and saves them to a JSON file
     with proper formatting and encoding. 
     
@@ -112,11 +114,12 @@ def save_chunks_to_json(chunks: List[Dict[str, Any]], output_file: str = "data/p
         print(f"Chunks saved to {output_file}")
     except Exception as e:
         print(f"Error saving chunks: {e}")
-#*****************************************************************************************************#
+# ====================================================================================================== #
 
 
-
-#*****************************************************************************************************#
+# ====================================================================================================== #
+# Main Execution Block
+# ====================================================================================================== #
 if __name__ == "__main__":
     """
     Main execution block for standalone document processing.
@@ -125,4 +128,4 @@ if __name__ == "__main__":
     chunks = process_json_documents()
     if chunks:
         save_chunks_to_json(chunks, output_file="data/processed_chunks.json")
-
+# ====================================================================================================== #

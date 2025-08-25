@@ -14,12 +14,12 @@ from langchain_openai import ChatOpenAI
 from app.core.settings import settings
 from openai import OpenAI
 from pinecone import Pinecone
+from typing import List
 
-# ============================================================================
+# ====================================================================================================== #
 # STATE DEFINITION - Using TypedDict for type safety
-# ============================================================================
+# ====================================================================================================== #
 class AgentState(TypedDict):
-    """State structure for the RAG agent workflow."""
     question: str
     validated_question: Optional[str]
     relevant_chunks: List[Dict[str, Any]]
@@ -27,21 +27,56 @@ class AgentState(TypedDict):
     confidence: Optional[float]
     final_response: Optional[Dict[str, Any]]
     status: str
+# ====================================================================================================== #
 
 
-# ============================================================================
-# NODE 1: INPUT NODE - Receives and validates user questions
-# ============================================================================
-def input_node(state: AgentState) -> AgentState:
+
+# ====================================================================================================== #
+# Confidence calibration
+# ====================================================================================================== #
+def compute_confidence_from_scores(
+    similarity_scores: List[float],
+    expected_min_similarity: float = 0.20,
+    expected_max_similarity: float = 0.70,
+    score_threshold: float = 0.20
+) -> float:
     """
-    Input node: Receives and validates user questions.
+    Convert retrieval cosine similarities into a user-friendly confidence in [0, 1].
+
+    Approach:
+    - Keep only the Top-3 scores (strongest evidence).
+    - Weighted average (0.6, 0.3, 0.1) to emphasize Top-1.
+    - Linearly rescale that value into [0, 1] using two anchors:
+        expected_min_similarity -> 0.0  (low confidence)
+        expected_max_similarity -> 1.0  (high confidence)
+    """
+    if not similarity_scores:
+        return 0.0
+
+    # Filter out very low scores
+    filtered_scores = [s for s in similarity_scores if s >= score_threshold]
+    if not filtered_scores:
+        return 0.0
     
-    Args:
-        state: Current state containing user question
-        
-    Returns:
-        Updated state with validated question
-    """
+    # Use top-3 or less if there are few results
+    top_scores = sorted(filtered_scores, reverse=True)[:3]
+    
+    # Weights that sum 1.0
+    weights = [0.6, 0.3, 0.1][:len(top_scores)]
+    weighted_avg = sum(w * s for w, s in zip(weights, top_scores)) / sum(weights)
+    
+    # More robust normalization
+    confidence = (weighted_avg - expected_min_similarity) / (expected_max_similarity - expected_min_similarity)
+    return max(0.0, min(1.0, confidence))
+# ====================================================================================================== #
+
+
+
+# ====================================================================================================== #
+# NODE 1: INPUT NODE - Receives and validates user questions
+# ====================================================================================================== #
+def input_node(state: AgentState) -> AgentState:
+    
     # Extract question from state
     question = state.get("question", "")
     
@@ -60,19 +95,15 @@ def input_node(state: AgentState) -> AgentState:
         "validated_question": cleaned_question,
         "status": "input_validated"
     }
+# ====================================================================================================== #
 
 
-# ============================================================================
+
+# ====================================================================================================== #
 # NODE 2: RETRIEVAL NODE - Searches relevant information in Pinecone
-# ============================================================================
+# ====================================================================================================== #
 def retrieval_node(state: AgentState) -> AgentState:
-    """
-    Retrieval node: Searches relevant information in Pinecone.
     
-    Args: state: Current state with validated question
-        
-    Returns: Updated state with relevant chunks
-    """    
     question = state.get("validated_question", "")
     
     print(f"🔍 Retrieval Node: Searching for: '{question}'")
@@ -96,25 +127,21 @@ def retrieval_node(state: AgentState) -> AgentState:
         index = pinecone_client.Index(settings.pinecone_index)
         
         # Step 2a: Initial search to get more candidates
-        initial_search = index.query(
+        search_results = index.query(
             vector=question_embedding,
             top_k=10,  # Get more candidates for rerank
             include_metadata=True,
-            include_values=False
+            include_values=False,
+            rerank={
+                "model": "bge-reranker-v2-m3",
+                "top_n": 10,
+                "rank_fields": ["text"]
+            }
         )
         
-        # Step 2b: Rerank using Pinecone's hybrid search for better relevance
-        reranked_results = index.query(
-            vector=question_embedding,
-            query_text=question,  # Pinecone uses this for semantic rerank
-            top_k=10,  # Increased to get more comprehensive coverage
-            include_metadata=True,
-            include_values=False
-        )
-        
-        # Step 3: Process reranked results (more relevant)
+        # Step 2: Process reranked results (more relevant)
         relevant_chunks = []
-        for match in reranked_results.matches:
+        for match in search_results.matches:
             chunk_data = {
                 "text": match.metadata.get("text", ""),
                 "source": match.metadata.get("sources", "unknown"),
@@ -151,19 +178,15 @@ def retrieval_node(state: AgentState) -> AgentState:
             "status": "retrieval_failed",
             "error": str(e)
         }
+# ====================================================================================================== #
 
 
-# ============================================================================
+
+# ====================================================================================================== #
 # NODE 3: GENERATION NODE - Generates responses using LLM
-# ============================================================================
+# ====================================================================================================== #
 def generation_node(state: AgentState) -> AgentState:
-    """
-    Generation node: Generates responses using LLM.
-    
-    Args: state: Current state with question and chunks
-        
-    Returns: Updated state with generated response
-    """
+
     question = state.get("validated_question", "")
     chunks = state.get("relevant_chunks", [])
     
@@ -179,45 +202,39 @@ def generation_node(state: AgentState) -> AgentState:
                 "confidence": 0.0
             }
         
-        # Step 1: Build context from chunks
+        # ---------------------- Build context from chunks ----------------------
         print("   📚 Building context from relevant chunks...")
-        context_parts = []
-        total_score = 0
+        # Sort by score (highest first) so Top-1/Top-3 are truly the best evidence
+        sorted_chunks = sorted(chunks, key=lambda c: c.get("score", 0.0), reverse=True)
+
+        # Prepare human-readable context for the LLM
+        context_sections: list[str] = []
+        for idx, chunk in enumerate(sorted_chunks, start=1):
+            chunk_text: str = chunk.get("text", "")
+            chunk_score: float = float(chunk.get("score", 0.0))
+            context_sections.append(f"Source {idx} (relevance: {chunk_score:.3f}):\n{chunk_text}")
+
+        # ---------------------- Calibrated confidence -------------------------
+        similarity_scores: list[float] = [float(c.get("score", 0.0)) for c in sorted_chunks]
+        calibrated_confidence: float = compute_confidence_from_scores(
+            similarity_scores=similarity_scores,
+            expected_min_similarity=0.20,  # tweak after measuring on your eval set
+            expected_max_similarity=0.70
+        )
+        print(f"   📊 Scores (Top-10): {[round(s, 3) for s in similarity_scores[:10]]}")
+        print(f"   🎯 Calibrated confidence: {calibrated_confidence:.3f}")
         
-        # Sort chunks by score to prioritize most relevant
-        sorted_chunks = sorted(chunks, key=lambda x: x.get("score", 0), reverse=True)
-        
-        for i, chunk in enumerate(sorted_chunks, 1):
-            chunk_text = chunk.get("text", "")
-            chunk_score = chunk.get("score", 0)
-            chunk_source = chunk.get("source", "unknown")
-            
-            context_parts.append(f"Fuente {i} (relevancia: {chunk_score:.3f}):\n{chunk_text}")
-            total_score += chunk_score
-        
-        # Calculate confidence using reranked scores
-        if chunks:
-            # Usar los scores ya reranked por Pinecone
-            scores = [chunk["score"] for chunk in chunks]
-            avg_confidence = sum(scores) / len(scores)
-            
-            print(f"   📊 Reranked confidence scores: {scores}")
-            print(f"   🎯 Average confidence: {avg_confidence:.3f}")
-        else:
-            avg_confidence = 0.0
-        
-        # Step 2: Create intelligent prompt
+        # ---------------------- Create intelligent prompt ----------------------
         system_prompt = """Eres un asistente experto en Punta Blanca Solutions. 
         Tu tarea es responder preguntas basándote en la información proporcionada.
         
-        Instrucciones:
-        1. Responde de manera clara y profesional
-        2. Usa la información de los chunks proporcionados de manera integral
+        INSTRUCCIONES CRÍTICAS:
+        1. Responde SOLO basándote en la información proporcionada
+        2. Si la información es insuficiente, di claramente "No tengo información suficiente sobre [aspecto específico]
         3. Si hay información en múltiples fuentes, combínala para dar una respuesta completa
-        4. Si no hay información suficiente sobre algún aspecto, indícalo claramente
-        5. Responde en español
-        6. Sé específico y útil
-        7. Prioriza la información más relevante según los scores de relevancia
+        4. Cita las fuentes más relevantes (con mayor score)
+        5. Responde en español profesional
+        6. Sé preciso y específico
         
         Contexto disponible:"""
         
@@ -225,17 +242,10 @@ def generation_node(state: AgentState) -> AgentState:
         Pregunta del usuario: {question}
 
         Información relevante (ordenada por relevancia):
-        {'\n\n'.join(context_parts)}
-
-        Instrucciones específicas:
-        - Analiza TODA la información proporcionada
-        - Combina información de diferentes fuentes cuando sea relevante
-        - Si la pregunta requiere información sobre múltiples aspectos, asegúrate de cubrirlos todos
-        - Responde de manera clara y profesional
-        - Si falta información sobre algún aspecto, indícalo claramente
+        {'\n\n'.join(context_sections)}
         """
         
-        # Step 3: Generate response with OpenAI
+        # ---------------------- Generate response with OpenAI ----------------------
         print("   Calling OpenAI API...")
         openai_client = OpenAI(api_key=settings.openai_api_key)
         
@@ -252,13 +262,13 @@ def generation_node(state: AgentState) -> AgentState:
         generated_response = response.choices[0].message.content.strip()
         
         print(f"   ✅ Response generated successfully")
-        print(f"   📊 Average confidence: {avg_confidence:.3f}")
+        print(f"   📊 Average confidence: {calibrated_confidence:.3f}")
         
-        # Return updated state
+        # ---------------------- Return updated state ----------------------
         return {
             **state,
             "generated_response": generated_response,
-            "confidence": avg_confidence,
+            "confidence": calibrated_confidence,
             "status": "generation_completed"
         }
         
@@ -274,19 +284,14 @@ def generation_node(state: AgentState) -> AgentState:
             "status": "generation_failed",
             "error": str(e)
         }
+# ====================================================================================================== #
 
 
-# ============================================================================
+
+# ====================================================================================================== #
 # NODE 4: OUTPUT NODE - Formats final response
-# ============================================================================
+# ====================================================================================================== #
 def output_node(state: AgentState) -> AgentState:
-    """
-    Output node: Formats final response.
-    
-    Args: state: Current state with generated response
-        
-    Returns: Final formatted response
-    """
 
     question = state.get("validated_question", "")
     response = state.get("generated_response", "")
@@ -301,13 +306,13 @@ def output_node(state: AgentState) -> AgentState:
     print(f"   📊 Debug - Confidence from state: {confidence}")
     print(f"   📊 Debug - Raw sources from chunks: {[chunk.get('source', 'unknown') for chunk in chunks]}")
     
-    # Eliminar duplicados en sources usando set
+    # Eliminate duplicates in sources using set
     unique_sources = list(set([chunk.get("source", "unknown") for chunk in chunks]))
     print(f"   📊 Debug - Unique sources after deduplication: {unique_sources}")
     
     formatted_response = {
         "answer": response,
-        "sources": unique_sources,  # Ahora sin duplicados
+        "sources": unique_sources,
         "confidence": confidence
     }
     
@@ -320,17 +325,15 @@ def output_node(state: AgentState) -> AgentState:
         "final_response": formatted_response,
         "status": "completed"
     }
+# ====================================================================================================== #
 
 
-# ============================================================================
+
+# ====================================================================================================== #
 # GRAPH DEFINITION - Connect all nodes
-# ============================================================================
+# ====================================================================================================== #
 def create_agent_graph():
-    """
-    Create and configure the LangGraph agent.
     
-    Returns: Configured LangGraph workflow
-    """
     # Create workflow with typed state
     workflow = StateGraph(AgentState)
     
@@ -352,15 +355,14 @@ def create_agent_graph():
     
     print("✅ LangGraph agent created successfully!")
     return compiled_workflow
+# ====================================================================================================== #
 
 
-# ============================================================================
+
+# ====================================================================================================== #
 # MAIN FUNCTION - For testing
-# ============================================================================
+# ====================================================================================================== #
 def main():
-    """
-    Test the agent with a sample question.
-    """
     print("🧪 Testing LangGraph Agent...")
     
     # Create the agent
@@ -390,7 +392,11 @@ def main():
     print(f"💬 Response: {result.get('final_response', {}).get('answer', 'No response')}")
     print(f"🔗 Sources: {result.get('final_response', {}).get('sources', [])}")
     print(f"🎯 Confidence: {result.get('final_response', {}).get('confidence', 0)}")
+# ====================================================================================================== #
 
 
+
+# ====================================================================================================== #
 if __name__ == "__main__":
     main()
+# ====================================================================================================== #
