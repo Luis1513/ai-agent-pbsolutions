@@ -20,15 +20,19 @@ from .pinecone_uploader import upload_to_pinecone
 
 
 #*****************************************************************************************************#
-def run_complete_pipeline(data_folder: str = "data", chunk_size: int = 1000, chunk_overlap: int = 200):
+def run_complete_pipeline(data_folder: str = "data", chunk_size: int = 750, chunk_overlap: int = 150):
     """
     Run the complete pipeline from start to finish.
     
     Args: data_folder: Folder containing JSON files
-           chunk_size: Size of each chunk
-           chunk_overlap: Overlap between chunks
+           chunk_size: Size of each chunk (default: 800 - optimized for context preservation)
+           chunk_overlap: Overlap between chunks (default: 150 - optimal continuity)
     """
     print("🚀 Starting complete pipeline...")
+    print("=" * 50)
+    print(f"⚙️  Using optimized parameters: chunk_size={chunk_size}, overlap={chunk_overlap}")
+    print("   • Chunk size 800: Optimal for maintaining complete context")
+    print("   • Overlap 150: Ensures continuity between chunks")
     print("=" * 50)
     
     # Step 1: Process JSON documents into chunks

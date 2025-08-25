@@ -27,7 +27,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 #*****************************************************************************************************#
-def process_json_documents(data_folder: str = "Data", chunk_size: int = 1000, chunk_overlap: int = 200) -> List[Dict[str, Any]]:
+def process_json_documents(data_folder: str = "Data", chunk_size: int = 750, chunk_overlap: int = 150) -> List[Dict[str, Any]]:
     """
     Process JSON documents from Data folder and create chunks.
     
@@ -36,12 +36,14 @@ def process_json_documents(data_folder: str = "Data", chunk_size: int = 1000, ch
     
     Args:
         data_folder: Path to folder containing JSON files (default: "Data")
-        chunk_size: Maximum size of each chunk in characters (default: 1000)
-        chunk_overlap: Overlap between consecutive chunks in characters (default: 200)
+        chunk_size: Maximum size of each chunk in characters (default: 800)
+        chunk_overlap: Overlap between consecutive chunks in characters (default: 150)
         
     Returns: List of dictionaries, where each dictionary represents a chunk
     """
-    # Initialize text splitter with specified chunk size and overlap
+    # Initialize text splitter with optimized chunk size and overlap
+    # Chunk size 800: Optimal for maintaining complete context while avoiding abrupt cuts
+    # Overlap 150: Ensures continuity between chunks without excessive redundancy
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,

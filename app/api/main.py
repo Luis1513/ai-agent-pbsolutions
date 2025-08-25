@@ -10,10 +10,21 @@ Dependencies:
     - Environment variables properly configured
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from app.core.settings import settings
+from app.graph.agent_graph import create_agent_graph, AgentState
 
 #*****************************************************************************************************#
+# Request/Response models
+class QuestionRequest(BaseModel):
+    question: str
+
+class RAGResponse(BaseModel):
+    answer: str
+    sources: list[str]
+    confidence: float
+
 # Initialize FastAPI application
 app = FastAPI(
     title="PB RAG", 
@@ -22,6 +33,67 @@ app = FastAPI(
 )
 #*****************************************************************************************************#
 
+
+
+#*****************************************************************************************************#
+@app.post("/ask", response_model=RAGResponse)
+async def ask_question(request: QuestionRequest):
+    """
+    Main RAG endpoint that processes user questions using the LangGraph agent.
+    
+    Args: request: QuestionRequest containing the user's question
+        
+    Returns: RAGResponse with answer, sources, and confidence
+    """
+    try:
+        # Validate question
+        if not request.question or len(request.question.strip()) < 3:
+            raise HTTPException(
+                status_code=400, 
+                detail="Question must be at least 3 characters long"
+            )
+        
+        # Create agent instance
+        agent = create_agent_graph()
+        
+        # Prepare input for the agent
+        agent_input: AgentState = {
+            "question": request.question.strip(),
+            "validated_question": None,
+            "relevant_chunks": [],
+            "generated_response": None,
+            "confidence": None,
+            "final_response": None,
+            "status": "started"
+        }
+        
+        # Execute the agent workflow
+        result = agent.invoke(agent_input)
+        
+        # Extract the final response
+        final_response = result.get("final_response", {})
+        
+        if not final_response:
+            raise HTTPException(
+                status_code=500, 
+                detail="Agent failed to generate response"
+            )
+        
+        # Return formatted response
+        return RAGResponse(
+            answer=final_response.get("answer", ""),
+            sources=final_response.get("sources", []),
+            confidence=final_response.get("confidence", 0.0)
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in ask_question: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Internal server error: {str(e)}"
+        )
 
 
 #*****************************************************************************************************#
