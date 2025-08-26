@@ -111,6 +111,8 @@ def retrieval_node(state: AgentState) -> AgentState:
     try:
         # Step 1: Generate embedding for the question
         print("   📡 Generating embedding for question...")
+        print(f"   🔧 Debug - Using embedding model: '{settings.openai_embedding_model}'")
+        print(f"   🔧 Debug - OpenAI API key: {settings.openai_api_key[:20]}...")
         openai_client = OpenAI(api_key=settings.openai_api_key)
         
         embedding_response = openai_client.embeddings.create(
@@ -238,11 +240,12 @@ def generation_node(state: AgentState) -> AgentState:
         
         Contexto disponible:"""
         
+        separator = '\n\n'
         user_prompt = f"""
         Pregunta del usuario: {question}
 
         Información relevante (ordenada por relevancia):
-        {'\n\n'.join(context_sections)}
+        {separator.join(context_sections)}
         """
         
         # ---------------------- Generate response with OpenAI ----------------------

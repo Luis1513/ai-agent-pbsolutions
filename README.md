@@ -323,7 +323,7 @@ pytest test/
 ### 1. **Construir y Taggear Imagen**
 ```bash
 # Construir imagen
-docker build -t pb-rag .
+docker build -t pb-rag:v1.0.0 .
 
 # Taggear para Google Container Registry
 docker tag pb-rag gcr.io/[PROJECT-ID]/pb-rag

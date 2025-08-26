@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     )
     
     pinecone_index: str = Field(
-        default="pb-rag",
+        default="agent-db",
         validation_alias="PINECONE_INDEX",
         description="Name of the Pinecone index for vector storage"
     )
@@ -111,4 +111,8 @@ class Settings(BaseSettings):
 # Global settings instance
 settings = Settings()
 print(f"[OK] Settings loaded: env={settings.env}, model={settings.openai_model}")
+print(f"[OK] OpenAI API Key: {settings.openai_api_key[:20]}...")
+print(f"[OK] OpenAI Embedding Model: {settings.openai_embedding_model}")
+print(f"[OK] Pinecone Index: {settings.pinecone_index}")
+print(f"[OK] Pinecone API Key: {settings.pinecone_api_key[:20]}...")
 # ====================================================================================================== #
