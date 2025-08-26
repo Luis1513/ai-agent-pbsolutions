@@ -58,12 +58,12 @@ ai-agent/
 │   └── graph/                   # Agente LangGraph
 │       └── agent_graph.py      # Implementación del agente RAG
 
-├── data/                        # Datos procesados
-│   ├── *.json                  # Documentos originales de Punta Blanca
+├── data/                        # Datos originales de Punta Blanca
+│   ├── *.json                  # Documentos originales (solo para referencia)
 │   ├── processed_chunks.json   # Chunks de texto procesados
 │   └── embeddings_processed.json # Embeddings generados
 
-├── ingest/                      # Pipeline de procesamiento
+├── ingest/                      # Pipeline de procesamiento (ya ejecutado)
 │   ├── document_processor.py   # Procesamiento de documentos
 │   ├── embedding_processor.py  # Generación de embeddings
 │   ├── pinecone_uploader.py    # Carga a Pinecone
@@ -72,7 +72,7 @@ ai-agent/
 ├── scripts/                     # Scripts de utilidad
 │   └── smoke_check.py          # Verificación de configuración
 
-├── Dockerfile                   # Containerización
+├── Dockerfile                   # Containerización para Cloud Run
 ├── .dockerignore               # Archivos a excluir del Docker
 ├── requirements.txt             # Dependencias de Python
 └── README.md                    # Este archivo
@@ -187,7 +187,7 @@ pip install -r requirements.txt
 cp .env.example .env
 # Editar .env con tus API keys
 
-# Ejecutar pipeline de ingest
+# Ejecutar pipeline de ingest (solo la primera vez)
 python -m ingest.run_pipeline
 
 # Ejecutar aplicación
@@ -200,7 +200,7 @@ uvicorn app.api.main:app --reload
 docker build -t pb-rag .
 
 # Ejecutar contenedor
-docker run -p 8000:8000 --env-file .env pb-rag
+docker run -p 8080:8080 --env-file .env pb-rag
 ```
 
 ## 📊 Pipeline de Datos
@@ -278,7 +278,7 @@ python -m ingest.run_pipeline
 
 #### Con curl
 ```bash
-curl -X POST "http://localhost:8000/ask" \
+curl -X POST "http://localhost:8080/ask" \
      -H "Content-Type: application/json" \
      -d '{"question": "¿Quiénes son los fundadores de Punta Blanca?"}'
 ```
@@ -288,7 +288,7 @@ curl -X POST "http://localhost:8000/ask" \
 import requests
 
 response = requests.post(
-    "http://localhost:8000/ask",
+    "http://localhost:8080/ask",
     json={"question": "¿Qué es AI Fast Track?"}
 )
 
@@ -318,34 +318,40 @@ pytest test/
 3. Verificar respuesta coherente
 4. Verificar fuentes y confianza
 
-## 🚀 Deployment en Cloud Run
+## 🚀 Deployment en Google Cloud Run
 
-### 1. **Construir y Taggear Imagen**
+### **Proceso Simplificado (3 pasos):**
+
+#### **Paso 1: Subir Docker a Google Container Registry**
 ```bash
-# Construir imagen
-docker build -t pb-rag:v1.0.0 .
+# Construir imagen con nombre de Google
+docker build -t gcr.io/TU_PROJECT_ID/pb-rag:v1 .
 
-# Taggear para Google Container Registry
-docker tag pb-rag gcr.io/[PROJECT-ID]/pb-rag
-
-# Subir a GCR
-docker push gcr.io/[PROJECT-ID]/pb-rag
+# Subir imagen a Google
+docker push gcr.io/TU_PROJECT_ID/pb-rag:v1
 ```
 
-### 2. **Deploy en Cloud Run**
+#### **Paso 2: Desplegar en Cloud Run**
 ```bash
-gcloud run deploy pb-rag \
-  --image gcr.io/[PROJECT-ID]/pb-rag \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars="OPENAI_API_KEY=[KEY],PINECONE_API_KEY=[KEY]"
+gcloud run deploy pb-rag-api \
+    --image gcr.io/TU_PROJECT_ID/pb-rag:v1 \
+    --platform managed \
+    --region us-central1 \
+    --allow-unauthenticated \
+    --port 8080
 ```
 
-### 3. **Verificar Deployment**
+#### **Paso 3: Configurar Variables de Entorno en Google Cloud**
+- Ir a Google Cloud Console > Cloud Run > tu servicio
+- En "Variables & Secrets" agregar:
+  - `OPENAI_API_KEY`: Tu API key de OpenAI
+  - `PINECONE_API_KEY`: Tu API key de Pinecone
+  - `PINECONE_INDEX`: Nombre de tu índice Pinecone
+
+### **Verificar Deployment**
 ```bash
 # Obtener URL del servicio
-gcloud run services describe pb-rag --region us-central1
+gcloud run services describe pb-rag-api --region=us-central1
 
 # Probar endpoint
 curl -X POST "[URL]/ask" \

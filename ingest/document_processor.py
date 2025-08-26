@@ -44,7 +44,7 @@ def process_json_documents(data_folder: str = "Data", chunk_size: int = 750, chu
     """
 
     # Initialize text splitter with optimized chunk size and overlap
-    # Chunk size 800: Optimal for maintaining complete context while avoiding abrupt cuts
+    # Chunk size 750: Optimal for maintaining complete context while avoiding abrupt cuts
     # Overlap 150: Ensures continuity between chunks without excessive redundancy
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,

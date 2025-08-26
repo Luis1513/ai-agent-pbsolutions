@@ -11,6 +11,7 @@ Dependencies:
 """
 # ====================================================================================================== #
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from app.core.settings import settings
 from app.graph.agent_graph import create_agent_graph, AgentState
@@ -34,6 +35,15 @@ app = FastAPI(
     title="PB RAG", 
     version="0.1.0",
     description="Retrieval-Augmented Generation API for document processing and AI interactions"
+)
+
+# Add CORS middleware for public API access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for public API
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 # ====================================================================================================== #
 
@@ -115,17 +125,43 @@ def health_check():
             - openai_model: Configured OpenAI model for embeddings
             - pinecone_index: Configured Pinecone index name
             
-    Raises:
-        HTTPException: If health check fails
+    Raises: HTTPException: If health check fails
     """
-    health_status = {
-        "status": "ok",
-        "env": settings.env,
-        "openai_model": settings.openai_model,
-        "pinecone_index": settings.pinecone_index,
+    try:
+        health_status = {
+            "status": "ok",
+            "env": settings.env,
+            "openai_model": settings.openai_model,
+            "pinecone_index": settings.pinecone_index,
+            "timestamp": "2024-01-01T00:00:00Z"  # Add timestamp for monitoring
+        }
+        
+        return health_status
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Health check failed: {str(e)}"
+        )
+# ====================================================================================================== #
+
+
+
+# ====================================================================================================== #
+@app.get("/")
+def root():
+    """
+    Root endpoint with API information.
+    """
+    return {
+        "message": "PB RAG API - Retrieval-Augmented Generation System",
+        "version": "0.1.0",
+        "endpoints": {
+            "health": "/healthz",
+            "ask": "/ask",
+            "docs": "/docs"
+        },
+        "status": "operational"
     }
-    
-    return health_status
 # ====================================================================================================== #
 
 

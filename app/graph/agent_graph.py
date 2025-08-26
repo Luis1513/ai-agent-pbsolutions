@@ -128,10 +128,10 @@ def retrieval_node(state: AgentState) -> AgentState:
         pinecone_client = Pinecone(api_key=settings.pinecone_api_key)
         index = pinecone_client.Index(settings.pinecone_index)
         
-        # Step 2a: Initial search to get more candidates
+        # Step 2a: Initial search to get more candidates with a reranker
         search_results = index.query(
             vector=question_embedding,
-            top_k=10,  # Get more candidates for rerank
+            top_k=10,  
             include_metadata=True,
             include_values=False,
             rerank={
@@ -278,7 +278,7 @@ def generation_node(state: AgentState) -> AgentState:
     except Exception as e:
         print(f"   ❌ Error in generation: {str(e)}")
         # Return fallback response on error
-        fallback_response = f"Lo siento, tuve un problema generando la respuesta para: '{question}'. Por favor, intenta de nuevo."
+        fallback_response = f"Sorry, I had a problem generating the response for: '{question}'. Please try again."
         
         return {
             **state,
@@ -296,7 +296,6 @@ def generation_node(state: AgentState) -> AgentState:
 # ====================================================================================================== #
 def output_node(state: AgentState) -> AgentState:
 
-    question = state.get("validated_question", "")
     response = state.get("generated_response", "")
     chunks = state.get("relevant_chunks", [])
     
