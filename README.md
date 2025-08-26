@@ -307,10 +307,6 @@ Verifica:
 - Creación/configuración de índice
 - Operaciones básicas de vectores
 
-### Tests Unitarios
-```bash
-pytest test/
-```
 
 ### Verificación Manual
 1. Ejecutar aplicación
